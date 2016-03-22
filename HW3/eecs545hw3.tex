@@ -1,0 +1,174 @@
+\documentclass{abernethy_hw}
+
+\def\TVname{Changhan (Aaron) Wang}
+
+\def\alg{\mathcal{A}}
+\def\R{\mathbb{R}}
+\def\x{\mathbf{x}}
+\def\y{\mathbf{y}}
+\def\z{\mathbf{z}}
+\def\p{\mathbf{p}}
+\def\EE{\mathbb{E}}
+\def\PP{\mathbb{P}}
+ 
+\hwclass{EECS 545 -- Machine Learning}
+\hwdue{11:00pm 02/22/2016}
+\hwassignment{Homework \#3}
+\begin{document}
+\maketitle
+\textbf{Homework Policy:} Working in groups is fine, but each member must submit their own writeup. Please write the members of your group on your solutions. There is no strict limit to the size of the group but we may find it a bit suspicious if there are more than 4 to a team. \textbf{For coding problems, please include your code and report your results (values, plots, etc.)} in your PDF submission. You will lose points if your experimental results are only accessible through rerunning your code. Homework will be submitted via Gradescope (https://gradescope.com/).
+
+\nprob{Support Vector Machine (40 points)}{
+
+Recall that maximizing the soft margin in SVM is equivalent to the following minimization problem:
+\begin{equation}
+\begin{aligned}
+& \min_{{\bf w}, b} & & \frac{1}{2} \Vert{\bf w}\Vert^2 + C \sum_{i=1}^N \xi_i \\
+& \text{subject to} & & t^{(i)} ( {\bf w}^T {\bf x}^{(i)} + b ) \ge 1 - \xi_i\\
+& & & \xi_i \ge 0 \qquad (i = 1, \ldots, N)
+\end{aligned}
+\end{equation}
+
+Equivalently, we can solve the following unconstrained minimization problem:
+
+\begin{equation}
+\begin{aligned}
+& \min_{{\bf w}, b} & & \frac{1}{2} \Vert{\bf w}\Vert^2 + C \sum_{i=1}^N \max\left(0, 1 - t^{(i)} ( {\bf w}^T {\bf x}^{(i)} + b ) \right)
+\end{aligned}
+\end{equation}
+
+
+    \subprob{Prove that minimization problem (1) and (2) are equivalent.}
+
+	\subprob{Let $(\mathbf{w}^*, b^*, \boldsymbol{\xi}^*)$ be the solution of minimization problem (1). Show that if $\xi_i^*>0$, then the distance from the training data point $\mathbf{x}^{(i)}$ to the margin hyperplane $t^{(i)}((\mathbf{w}^*)^T\mathbf{x}+b^*)=1$ is proportional to $\xi^*_i$.
+	}
+	
+	\subprob{The error function in minimization problem (2) is
+	$$E({\bf w}, b) =  \frac{1}{2} \Vert{\bf w}\Vert^2 + C \sum_{i=1}^N \max\left(0, 1 - t^{(i)} ( {\bf w}^T {\bf x}^{(i)} + b ) \right)$$
+	Find its derivatives: $\nabla_{\bf w} E({\bf w}, b)$ and $\frac{\partial}{\partial b} E({\bf w}, b)$. Where the derivative is undefined, use a subderivative.
+	}
+	
+	\subprob{Implement the soft-margin SVM using batch gradient descent. Here is the pseudo code:
+	
+	\begin{minipage}{16cm}
+	\begin{algorithm}[H]
+        \SetAlgoLined
+     \caption{SVM Batch Gradient Descent}
+     ${\bf w^{*}} \gets {\bf 0}$ \;
+     $b^* \gets 0 $ \;
+     \For{ j=1 to NumIterations }{
+     	${\bf w}_{grad} \gets \nabla_{\bf w} E({\bf w^{*}}, b^*)$ \;
+    	$b_{grad} \gets\frac{\partial}{\partial b} E({\bf w^{*}}, b^*)$ \;
+        ${\bf w^{*}} \gets {\bf w^{*}} - \alpha(j)\  {\bf w}_{grad}$ \;
+        $b^* \gets b^* - \alpha(j) \ b_{grad}$ \;
+        }
+      {\bf return} ${\bf w^{*}}$
+    \end{algorithm}
+    \end{minipage}
+    
+    The learning rate for the $j$-th iteration is defined as:
+    
+    \begin{equation*}
+        \alpha(j) = \frac{\eta_0}{1 + j \cdot \eta_0}    
+    \end{equation*}
+    
+    Set $\eta_0$ to $0.001$ and the slack cost $C$ to $3$. Show the iteration-versus-accuracy (training accuracy) plot. The training and test data/labels are provided in \texttt{digits\_training\_data.csv}, \texttt{digits\_training\_labels.csv}, \texttt{digits\_test\_data.csv} and \texttt{digits\_test\_labels.csv}.
+    }
+	
+	\subprob{Let 
+	$$E^{(i)}({\bf w}, b) = \frac{1}{2N} \Vert{\bf w}\Vert^2  + C \max\left(0, 1 - t^{(i)} ( {\bf w}^T {\bf x}^{(i)} + b ) \right)$$
+    then
+	$$E({\bf w}, b) = \sum_{i=1}^N E^{(i)}({\bf w}, b)$$
+	
+	Find the derivatives $\nabla_{\bf w} E^{(i)}({\bf w}, b)$ and $\frac{\partial}{\partial b} E^{(i)}({\bf w}, b)$. Once again, use a subderivative if the derivative is undefined.
+	}
+	
+	\subprob{Implement the soft-margin SVM using stochastic gradient descent. Here is the pseudo-code:
+	
+	\begin{minipage}{16cm}
+	\begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{SVM Stochastic Gradient Descent}
+    	 ${\bf w^{*}} \gets {\bf 0}$ \;
+     	$b^* \gets 0 $ \;
+     
+     \For{ j=1 to NumIterations }{
+     	\For {i = Random Permutation of 1 to N} {
+     		${\bf w}_{grad} \gets \nabla_{\bf w} E^{(i)}({\bf w^{*}}, b^*)$ \;
+    		$b_{grad} \gets\frac{\partial}{\partial b} E^{(i)}({\bf w^{*}}, b^*)$ \;
+      		${\bf w^{*}} \gets {\bf w^{*}} - \alpha(j)\  {\bf w}_{grad}$ \;
+      		$b^* \gets b^* - \alpha(j) \ b_{grad}$ \;
+      	}
+      }
+      {\bf return} ${\bf w^{*}}$
+    \end{algorithm}
+    \end{minipage}
+    
+	Use the same $\alpha(\cdot)$, $\eta_0$ and $C$ in (c). Be sure to use a new random permutation of the indices of the inner loop for each iteration of the outer loop. Show the iteration-versus-accuracy (outer iteration and training accuracy) curve \textbf{in the same plot} as that for batch gradient descent. The training and test data/labels are provided in \texttt{digits\_training\_data.csv}, \texttt{digits\_training\_labels.csv}, \texttt{digits\_test\_data.csv} and \texttt{digits\_test\_labels.csv}.
+	}
+	
+	\subprob{What can you conclude about the convergence rate of stochastic gradient descent versus batch gradient descent? How did you make this conclusion?
+	}
+    \subprob{Show the Lagrangian function for minimization problem (1) and derive the dual problem. Your result should have only dual variables in the objective function as well as the constraints. How can you kernelize the soft-margin SVM based on this dual problem?
+    }
+    \subprob{Apply the soft-margin SVM (with RBF kernel) to handwritten digit classification. The training and test data/labels are provided in \texttt{digits\_training\_data.csv}, \texttt{digits\_training\_labels.csv}, \texttt{digits\_test\_data.csv} and \texttt{digits\_test\_labels.csv}. Report the training and test accuracy, and show 5 of the misclassified test images (if fewer than 5, show all; label them with your predictions). You can use the scikit-learn (or equivalent) implementation of the kernelized SVM in this question. You are free to select the parameters (for RBF kernel and regularization), and please report your parameters.
+    }
+    \subprob{Implement linear discriminant analysis (LDA) using the same data in (i). Report the training and test accuracy, and show 5 of the misclassified test images (if fewer than 5, show all; label them with your predictions). Is there any significant difference between LDA and SVM (with RBF kernel)? Using implementation from libraries is NOT allowed in this question. You can use pseudoinverse during computation.}
+}
+
+
+
+\nprob{Open Kaggle Challenge (20 points)}{
+You can use any algorithm and design any features to perform classification on the handwritten digit dataset. Please refer to \url{https://inclass.kaggle.com/c/handwritten-digit-classification} for details. This problem will be graded separately based on your performance on the private leaderboard.
+}
+
+\nprob{Constructing Kernels (20 points)}{
+    
+\subprob{Let $\mathbf{u},\mathbf{v}$ be vectors of dimension $d$. What feature map $\phi$ does the kernel
+$$k(\mathbf{u}, \mathbf{v})=(\langle \mathbf{u}, \mathbf{v}\rangle+1)^4$$
+correspond to? In other words, specify the function $\phi(\cdot)$ so that $k(\mathbf{u},\mathbf{v}) = \phi(\mathbf{u})^\top \phi(\mathbf{v})$ for all $\mathbf{u},\mathbf{v}$. Please show the expression for $d=3$ and describe how to extend it to arbitrary dimension $d$.
+}
+    \subprob{Let $k_1$, $k_2$ be positive-definite kernel functions over $\mathbb{R}^D \times \mathbb{R}^D$, let $a \in \mathbb{R}^{+}$ be a positive real number, let $f : \mathbb{R}^D \rightarrow \mathbb{R}$ be a real-valued function and let $p : \mathbb{R} \rightarrow \mathbb{R}$ be a polynomial with {\it positive} coefficients. For each of the functions $k$ below, state whether it is necessarily a positive-definite kernel. If you think it is, prove it; if you think it is not, give a counterexample. 
+    
+    	\subsubprob{$k({\bf x}, {\bf z}) = k_1({\bf x}, {\bf z}) + k_2({\bf x}, {\bf z})$
+    	}
+    	\subsubprob{$k({\bf x}, {\bf z}) = k_1({\bf x}, {\bf z}) - k_2({\bf x}, {\bf z})$
+    	}
+    	\subsubprob{$k({\bf x}, {\bf z}) = a k_1({\bf x}, {\bf z})$
+    	}
+    	\subsubprob{$k({\bf x}, {\bf z}) = k_1({\bf x}, {\bf z}) k_2({\bf x}, {\bf z})$
+    	}
+    	\subsubprob{$k({\bf x}, {\bf z}) = f({\bf x}) f({\bf z})$
+    	}
+    	\subsubprob{$k({\bf x}, {\bf z}) = p(k_1({\bf x}, {\bf z}))$
+    	}
+    	\subsubprob{Prove that the Gaussian Kernel $k({\bf x}, {\bf z}) = \exp\left(\frac{-\Vert{\bf x}-{\bf z}\Vert^2}{2\sigma^2}\right)$ can be expressed as $\phi({\bf x})^T \phi({\bf z})$, where $\phi(\cdot)$ is an infinite-dimensional vector. (Hint: using power series)
+        }
+    }
+}
+\nprob{Kernelized Ridge Regression (20 points)}{
+
+Recall that the error function for ridge regression (linear regression with L2 regularization) is:
+$$E(\mathbf{w})=(\Phi\mathbf{w}-\mathbf{t})^T(\Phi\mathbf{w}-\mathbf{t})+\lambda \mathbf{w}^T\mathbf{w}$$
+and its closed-form solution and model are:
+$$\hat{\mathbf{w}}=(\Phi^T\Phi + \lambda I)^{-1}\Phi^T\mathbf{t}\text{  and  }\hat{f}(\mathbf{x})=\hat{\mathbf{w}}^T\phi(\mathbf{x})=\mathbf{t}^T\Phi(\Phi^T\Phi + \lambda I)^{-1}\phi(\mathbf{x})$$
+Now we want to kernelize ridge regression and allow non-linear models.
+    \subprob{Use the following matrix inverse lemma to derive the closed-form solution and model for kernelized ridge regression:
+    $$(P+QRS)^{-1}=P^{-1}-P^{-1}Q(R^{-1}+SP^{-1}Q)^{-1}SP^{-1}$$
+    where P is an $n\times n$ invertible matrix, R is a $k\times k$ invertible matrix, Q is an $n\times k$ matrix and S is a $k\times n$ matrix.
+    Make sure that your kernelized model only depends on the feature vectors $\phi(\mathbf{x})$ through inner products with other feature vectors.
+    }
+    \subprob{Apply kernelized ridge regression to the steel ultimate tensile strength dataset. The training data and test data are provided in \texttt{steel\_composition\_train.csv} and \texttt{steel\_composition\_test.csv}, respectively. We recommend you to normalize the data before applying the models. Report the RMSE (Root Mean Square Error) of the models on the training data. Try (set $\lambda=1$)
+        \subsubprob{Polynomial kernel $k(\mathbf{u}, \mathbf{v})=(\langle \mathbf{u}, \mathbf{v}\rangle+1)^2$
+        }
+        \subsubprob{Polynomial kernel $k(\mathbf{u}, \mathbf{v})=(\langle \mathbf{u}, \mathbf{v}\rangle+1)^3$
+        }
+        \subsubprob{Polynomial kernel $k(\mathbf{u}, \mathbf{v})=(\langle \mathbf{u}, \mathbf{v}\rangle+1)^4$
+        }
+        \subsubprob{Gaussian kernel $k(\mathbf{u}, \mathbf{v})=\exp\left(-\frac{\Vert\mathbf{u}-\mathbf{v}\Vert^2}{2\sigma^2}\right)$ (set $\sigma=1$)
+        }
+    }
+
+}
+
+\end{document}
