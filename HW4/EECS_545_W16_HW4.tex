@@ -1,0 +1,329 @@
+\documentclass{abernethy_hw}
+
+%% Homework info
+\def\TVname{Daniel LeJeune \& Benjamin Bray}
+\hwclass{EECS 545 -- Machine Learning}
+\hwdue{11:00pm 03/21/2016}
+\hwassignment{Homework \#4}
+
+%%%% CUSTOM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{framed,xcolor} 				% Framed Paragraph Boxes
+\usepackage{enumitem}					% Customizable Lists
+\usepackage{parskip}
+%\usepackage{enumerate}
+\usepackage{graphicx, subcaption}
+
+% Math / Theorems
+\usepackage{amsmath,amsthm,amssymb}		% AMS Math
+\usepackage{thmtools}					% Theorem Tools
+\usepackage{bm}					        % Bold Math
+
+\newcommand{\ul}[1]{\underline{#1}}
+
+% Sets
+\newcommand{\set}[1]{\{#1\}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\renewcommand{\P}{\mathcal{P}}
+\newcommand{\X}{\mathcal{X}}
+\newcommand{\Y}{\mathcal{Y}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\B}{\mathcal{B}}
+\newcommand{\E}{\mathcal{E}}
+
+% bolded vector letters
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\w}{\mathbf{w}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\z}{\mathbf{z}}
+
+\newcommand{\EE}{\mathbb{E}}
+
+% Distributions
+\newcommand{\Ber}{\text{Ber}}
+\newcommand{\Bin}{\text{Bin}}
+\newcommand{\Geom}{\text{Geom}}
+\newcommand{\Dir}{\text{Dirichlet}}
+\newcommand{\Beta}{\text{Beta}}
+\newcommand{\Cat}{\text{Categorical}}
+
+% Proof List
+\newlist{prooflist}{enumerate}{3}
+\setlist[prooflist]{noitemsep, leftmargin=2em}
+\setlist[prooflist,1]{label=(\arabic*)}
+\setlist[prooflist,2]{label=(\alph*), topsep=0pt}
+\setlist[prooflist,3]{label=(\roman*), topsep=0pt}
+\setlist[prooflist,4]{label=(\arabic*), topsep=0pt}
+
+%% Answer
+\newenvironment{answer}
+	{\begin{trivlist}\color{blue}\item}
+	{\end{trivlist}\vspace{1em}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\maketitle
+\textbf{Homework Policy:} Working in groups is fine, but each member must submit their own writeup. Please write the members of your group on your solutions. There is no strict limit to the size of the group but we may find it a bit suspicious if there are more than 4 to a team. \textbf{For coding problems, please include your code and report your results (values, plots, etc.)} in your PDF submission. You will lose points if your experimental results are only accessible through rerunning your code. Homework will be submitted via Gradescope (https://gradescope.com/).
+\vspace{1em}
+
+%%%% PROBLEM 1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\nprob{Information Theory, (20 pts)}
+
+Many algorithms for learning probabilistic models are best understood in terms of \textit{information theory}.  Consequently, it is useful to understand and manipulate these quantities in different contexts.
+
+%% Part A ----------------------------------------------------------------------
+\subprob{Show that 
+    \[
+    I(X, Y) = H(X) - H(X | Y) = H(Y) - H(Y | X)
+    \]
+where $I(X,Y)$ is the mutual information of $X$ and $Y$, $H(X)$ is the entropy of $X$, and $H(X|Y)$ is the conditional entropy of $X$ given $Y$.
+}
+
+%% Part B ----------------------------------------------------------------------
+\subprob{Prove that if $X$ and $Y$ are related by a bijection $f$ (i.e., $X = f(Y)$ and $Y = f^{-1}(X)$), then $I(X,Y) = H(X) = H(Y)$.}
+
+%% Part C ----------------------------------------------------------------------
+\subprob{Suppose we observe $N$ samples $\mathcal{D}=( x_1, \ldots, x_N )$ from some unknown distribution.  Define $\hat{p}(x)$ to be the empirical probability density estimate,
+\[
+    \hat{p}(x) \triangleq \frac{1}{N} \sum_{i=1}^N \mathbb{I}[x = x_i]
+\]
+Let $q(x | \theta)$ be the probability density corresponding to some known probabilistic model with parameter $\theta$.  Show that the minimum Kullback--Leibler divergence
+    \begin{equation*}
+    \min_\theta D_{KL}(\hat{p} || q)
+    \end{equation*}
+is obtained by the maximum likelihood estimate $\theta_{ML}$ given the data $\mathcal{D}$.
+}
+
+%% Part D ----------------------------------------------------------------------
+\subprob{
+Let $p = \mathcal{N}(\mu, \sigma^2)$ be a Gaussian distribution and $q$ be any probability density with mean $\mu$ and variance $\sigma^2$.  Prove that $H(q) \leq H(p)$, that is, the Gaussian distribution has maximum entropy among all distributions of the same variance. \textit{Hint: Refer to the textbook (PRML by Bishop \S 1.6) for a proof outline.}
+}
+
+%%%% PROBLEM 2 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\nprob{Dirichlet Maximum Likelihood (20 pts)}
+
+In this problem, you will derive and implement a Newton-Raphson algorithm for maximizing the Dirichlet log-likelihood function.  Unlike for the simple distributions we have encountered in the past (Multinomial, Poisson, etc.), no closed-form solution exists for the Maximum Likelihood estimate of Dirichlet parameters.  
+\\[0.5em]
+Recall a Dirichlet-distributed random vector $\vec{p} = (p_1, \dots, p_m) \in \Delta^{m-1}$ governed by nonnegative concentration parameters $\vec{\alpha} = (\alpha_1, \dots, \alpha_m)$ has following distribution,
+    \begin{equation*}
+    \Dir(\vec{p} | \vec{\alpha})
+    = \frac{\Gamma(\sum_{k=1}^m \alpha_k)}{\prod_{k=1}^m \Gamma(\alpha_k)} 
+        \prod_{k=1}^m p_k^{\alpha_k - 1}
+    \end{equation*}
+where $\Gamma(t)$ is the \textit{Gamma function} and $\Delta^{m-1}$ is the unit simplex in $\R^m$.
+
+%% Part A:  Exponential Family Form --------------------------------------------
+\subprob{Show that the Dirichlet distribution belongs to the \textit{exponential family}, that is, find a natural parameter $\eta \triangleq \eta(\vec\alpha)$, a sufficient statistics function $T(\vec{p})$, and a log-partition function $A(\vec\alpha)$ such that
+    \begin{equation*}
+    \Dir(\vec{p} | \vec\alpha)
+    = \exp\left[ \eta(\vec\alpha)^T T(\vec{p}) - A(\vec\alpha) \right]
+    \end{equation*}
+This guarantees that the log-likelihood is convex and Newton's method will converge to a global optimum.
+}
+
+%% Part B:  Log-Likelihood -----------------------------------------------------
+\subprob{Given observations $\D = ( \vec{p}^{(1)}, \dots, \vec{p}^{(N)} )$, derive an expression for the Dirichlet log-likelihood function $F(\vec{\alpha}) = \log P(\D | \alpha)$ in terms of the \textit{observed sufficient statistics},
+    \begin{equation*}
+    \hat{t}_k = \frac{1}{N} \sum_{j=1}^N \log p_k^{(j)}
+    \end{equation*}
+}
+\vspace{-1.5em}
+%% Part C:  Gradient -----------------------------------------------------------
+\subprob{Derive an expression for the gradient of the log-likelihood in terms of the observed sufficient statistics and the \textit{digamma function}, 
+    \begin{equation*}
+    \Psi(t) = \frac{\mathrm{d} \log \Gamma(t)}{\mathrm{d} t} = \frac{\Gamma'(t)}{\Gamma(t)}
+    \end{equation*}
+(\textit{Hint:} Specify each component $\frac{\partial F}{\partial \alpha_k}$ separately, rather than trying to use matrix operations.)
+}
+
+%% Part D:  Hessian ------------------------------------------------------------
+\subprob{Show that the Hessian matrix $H \triangleq \nabla_{\vec\alpha}^2 F(\vec\alpha)$ of the log-likelihood can be written as the sum of a diagonal matrix and a matrix whose elements are all the same,
+    \begin{equation*}
+    H = \nabla_{\vec\alpha}^2 F(\vec\alpha) = Q + c11^T
+    \end{equation*}
+where $c \in \R$ is a constant and $Q \in \R^{m \times m}$ is diagonal with entries $q_{11}, \dots, q_{mm}$.  (\textit{Note:} It is okay to simply write $\Psi'$ for the derivative of the digamma function.)
+}
+
+%% Part E:  Newton-Raphson -----------------------------------------------------
+\subprob{The Newton-Raphson method provides a quadratically converging method for parameter estimation.  The general update rule can be written in terms of the Hessian matrix as follows:
+    \begin{equation*}
+    \vec\alpha^{new} = \vec\alpha^{old} - [ H_F(\vec\alpha^{old})]^{-1} \cdot \nabla F(\vec\alpha^{old})
+    \end{equation*}
+Use the Sherman-Morrison matrix inversion lemma to derive a closed-form update for $\vec\alpha$ (any remaining matrix inversions should be diagonal). 
+}
+
+%% Part F:  Implementation -----------------------------------------------------
+\subprob{Implement this Newton-Raphson update in your language of choice:
+\begin{itemize}
+    \setlength{\leftskip}{\probmargin}
+	\addtolength{\leftskip}{\probmargin}
+    \item Generate $N=1000$ samples from the Dirichlet distribution with parameter $\vec\alpha = (10, 5, 15, 20, 50)$ (see \texttt{hw4p2.py} on Canvas). Use an initial estimate of $\hat{\vec\alpha} = (1, 1, 1, 1, 1)$.
+    \item The following Python functions may be useful: \texttt{from scipy.special import gammaln, polygamma}.
+\end{itemize}
+
+\emph{Deliverables:}
+\begin{itemize}
+    \setlength{\leftskip}{\probmargin}
+	\addtolength{\leftskip}{\probmargin}
+    \item A plot of the log-likelihood as a function of iteration number. Also plot the log-likelihood given the true parameters as a constant (horizontal) line. Terminate your algorithm when the log-likelihood increases by less than $10^{-4}$.
+    \item The estimated model parameters.
+    \item Please submit you code, as usual.
+\end{itemize}
+}
+
+%%%% PROBLEM 3 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\nprob{Graphical Models (15 pts)}
+
+In this problem, you will explore the independence properties of directed graphical models and practice translating them to factored probability distributions and back.
+
+%% Part A ----------------------------------------------------------------------
+\subprob{Draw a directed graphical model for each of the following factored distributions.  Take advantage of plate notation when convenient, and represent as many independencies with your graph as possible (i.e., don't draw a fully connected graph!).
+\subsubprob{$P(y_1, y_2, y_3, y_4, y_5) = P(y_1) P(y_2 | y_1) \prod_{k=3}^5 P(y_k | y_{k-1}, y_{k-2})$}
+\subsubprob{$P(x_1, \dots, x_N, y_1, \dots, y_N) = P(y_1) \prod_{k=2}^N P(y_k | y_{k-1}) \prod_{k=1}^N P(x_k | y_k)$}
+}
+
+%% Part B ----------------------------------------------------------------------
+\subprob{Draw a directed graphical model for the following model specification, where $\alpha \in \R^K$ and $\beta \in \R^{K \times W}$ are fixed hyperparameters, and $\vec\beta_k$ denotes the $k^{th}$ row of $\beta$:
+    \begin{align*}
+    \vec\theta_1 \dots, \vec\theta_d &\stackrel{iid}{\sim} \Dir(\vec\alpha) \\
+    z_{d1}, \dots, z_{dN} | \vec\theta_d &\stackrel{iid}{\sim} \Cat(\vec\theta_d) & \forall\, d \in \{1,\dots,D\} \\
+    w_{dj} | z_{dj} &\sim \Cat(\vec\beta_{z_{dj}}) & \forall\, d \in \{1,\dots,D\}, j \in \{1, \dots, N \} 
+    \end{align*}
+}
+
+%% Part C ----------------------------------------------------------------------
+\subprob{For each directed model below, write down the factorized joint distribution over all variables.}
+\begin{figure*}[h!]
+    \centering
+    \begin{subfigure}[t]{0.5\textwidth}
+        \centering
+        \includegraphics[height=1.2in]{images/lda-factored}
+    \end{subfigure}%
+    ~ 
+    \begin{subfigure}[t]{0.5\textwidth}
+        \centering
+        \includegraphics[height=1.2in]{images/mixture-unigrams}
+    \end{subfigure}
+\end{figure*}
+
+%%%% PROBLEM 4 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\nprob{Clustering (20 points)}
+
+Download the image \texttt{mandrill.png} from Canvas. In this problem you will apply the $k$-means algorithm to image compression. In this context it is also known as the Lloyd-Max algorithm.
+
+\subprob{First, partition the image into blocks of size $M \times M$ and
+reshape each block into a vector of length $3M^2$  (see \texttt{hw4p4.py} on Canvas). The 3 comes from the fact that this is a color image, and so there are three intensities for each pixel. Assume that $M$, like the image dimensions, is a power of 2.
+
+Next, write a program that will cluster the vectors from \textbf{(a)} using the $k$-means algorithm.
+\textbf{You should implement the $k$-means algorithm yourself.} Please initialize the cluster means to be randomly selected data points, sampled without replacement.
+
+Finally, reconstruct a quantized version of the original image by
+replacing each block in the original image by the nearest centroid. Test your code using $M = 2$ and $k = 64$.
+
+\emph{Deliverables:}
+\begin{itemize}
+    \setlength{\leftskip}{\probmargin}
+	\addtolength{\leftskip}{\probmargin}
+    \item A plot of the $k$-means objective function value versus iteration number.
+    \item A description of how the compressed image looks compared to the original. What regions are best preserved, and which are not?
+    \item A picture of the difference of the two images. You should add a neutral gray $(128,128,128)$ to the difference before generating the image.
+    \item The compression ratio (use your forumla from \textbf{(b)}).
+    \item The
+relative mean absolute error of the compressed image, defined as
+\[
+\frac{\frac{1}{3N^2} \sum_{i=1}^N \sum_{j=1}^N \sum_{r=1}^3 |\tilde{I}(i, j, r) - I(i, j, r)|}{255}
+\]
+where $\tilde{I}$ and $I$ are the compressed and original images, respectively, viewed as 3-D arrays. This
+quantity can be viewed as the average error in pixel intensity relative to the range of
+pixel intensities.
+    \item Please submit you code, as usual.
+\end{itemize}
+}
+
+\subprob{
+The original uncompressed image uses 24 bits per pixel (bpp), 8 bits for each
+color. Assuming an image of size $N \times N$, where $N$ is a power of 2, what is the number
+of bits per pixel, as a function of $M$, $N$, and $k$, needed to store the compressed image?
+What is the compression ratio, which is defined as the ratio of bpp in the compressed
+image relative to the original uncompressed image? \emph{Hint: To calculate the bpp of the
+compressed image, imagine you need to transmit the compressed image to a friend who
+knows the compression strategy as well as the values of $M$, $N$, and $k$.}
+}
+
+\subprob{
+(Optional, ungraded) Play around with $M$ and $k$.
+}
+
+
+%%%% PROBLEM 5 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\nprob{EM Algorithm for Mixed Linear Regression (25 points)}
+
+Consider regression training data $(\x_1, y_1),\ldots,(\x_n, y_n)$, iid realizations of $(\vec{X}, Y) \in \R^d \times \R$,
+where the conditional distribution of $Y$ given $\vec{X}$ is modeled by the pdf
+\[
+f(y|\x; \vec\theta) \sim \sum_{k=1}^K \pi_k \phi(y; \w_k^T \x + b_k, \sigma_k^2),
+\]
+where $\vec\theta = (\pi_1,\ldots,\pi_K, \w_1,\ldots, \w_K, b_1, \ldots, b_K, \sigma_1^2,\ldots, \sigma_K^2)$ is a list of the model parameters such that $\pi_k \geq 0$ and $\sum_{k=1}^K \pi_k = 1$, and $\phi(y; \mu, \sigma^2)$ is the pdf of a Gaussian random variable with mean $\mu$ and variance $\sigma^2$ evaluated at $y$. Viewing
+the $\x_i$ as deterministic, derive an EM algorithm for maximizing the likelihood by
+following these steps.
+
+\subprob{Denote $\underline{\x} = (\x_1,\ldots, \x_N)$ and $\underline{y} = (y_1,\ldots, y_N)$. Write down the formula for the log-likelihood, $\log f(\underline{y}|\underline{\x}; \vec\theta)$, where $f(\underline{y}|\underline{\x}; \vec\theta)$ is the model (with parameters $\vec\theta$)
+for $\underline{y}$ given $\underline\x$.
+}
+
+\subprob{Introduce hidden variable $\underline{z} = (z_1, \ldots, z_N)$ which determines the mixture component that $y$ is drawn from, i.e., $f(y|\x, z = k; \vec\theta) = \phi(y; \w_k^T \x + b_k, \sigma_k^2)$. Write down the complete-data log-likelihood, $\log f(\underline{y}, \underline{z} | \underline{\x}; \vec\theta)$. \emph{Hint: Define a random variable $\Delta_{ik} \triangleq \mathbb{I}[z_i = k]$ so that you can write the log-likelihood as a double sum and so that $\underline{z}$ only appears in the expression through $\Delta_{ik}$.}}
+
+\subprob{Determine the E-step. Give an explicit formula for 
+\[
+Q(\vec\theta, \vec\theta^\mathrm{old}) = \EE_{\underline{z}} \left[\log f(\underline{y}, \underline{z} | \underline{\x}; \vec\theta) | \underline{y},\underline{\x}; \vec\theta^\mathrm{old} \right]
+\]
+in terms of $\vec\theta$, $\vec\theta^\mathrm{old}$, and the data. Remember that in this expectation, you should treat only $\underline{z}$ as a random variable, and the distribution of $\underline{z}$ is conditioned on $\underline{y}$ and $\underline{\x}$ and governed by the parameters $\vec\theta^\mathrm{old}$. The log-likelihood inside the expectation, on the other hand, is parameterized by $\vec\theta$ and is non-random for a fixed $\underline{z}$.}
+
+\subprob{Determine the M-step. That is, determine the $\vec\theta$ that maximizes $Q(\vec\theta, \vec\theta^\mathrm{old})$.  \emph{Suggestions:} Use Lagrange multiplier theory to optimize the weights $\pi_k$. To optimize $(\w_k, b_k, \sigma_k^2)$, first hold $\sigma_k^2$ fixed and find the optimal $(\w_k, b_k)$, then plug that in and find the optimal $\sigma_k^2$. Just treat $\sigma_k^2$ as a variable (not the square of a variable).}
+
+\subprob{Now let's put these ideas into practice. Generate the data as follows (or see \texttt{hw4p5.py}):
+\begin{itemize}
+    \setlength{\leftskip}{\probmargin}
+	\addtolength{\leftskip}{\probmargin}
+    \item Use $d = 1$ and $N = 500$. Let $\underline{x}$ be sampled independently and uniformly from the interval $[0, 1]$.
+    \item Use $\pi_1 = 0.7, \pi_2 = 0.3$.
+    \item Use $w_1 = -2, w_2 = 1$.
+    \item Use $b_1 = 0.5, b_2 = -0.5$.
+    \item Use $\sigma_1 = 0.4, \sigma_2 = 0.3$. \emph{Note: This is $\sigma$, not $\sigma^2$.}
+    \item Draw $\underline{y}$ from the distribution using the above parameters and your already sampled $\underline{\x}$. 
+\end{itemize}
+
+Implement the EM algorithm using the updates you derived in \textbf{(d)}, and estimate the model parameters, initializing your estimates with the following values:
+\begin{itemize}
+    \setlength{\leftskip}{\probmargin}
+	\addtolength{\leftskip}{\probmargin}
+    \item Use $\hat\pi_1 = \hat\pi_2 = 0.5$.
+    \item Use $\hat{w}_1 = 1, \hat{w}_2 = -1$.
+    \item Use $\hat{b}_1 = \hat{b}_2 = 0$.
+    \item Use $\hat\sigma_1 = \hat\sigma_2 =  \mathrm{std}(\underline{y})$. This is the standard deviation of your generated $\underline{y}$.
+\end{itemize}
+
+\emph{Deliverables:}
+\begin{itemize}
+    \setlength{\leftskip}{\probmargin}
+	\addtolength{\leftskip}{\probmargin}
+    \item A plot of the log-likelihood as a function of iteration number. Terminate your algorithm when the log-likelihood increases by less than $10^{-4}$.
+    \item The estimated model parameters.
+    \item A plot showing the data and estimated lines together.
+    \item Please submit you code, as usual.
+\end{itemize}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
